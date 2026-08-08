@@ -10,6 +10,9 @@ import { SaasDashboardPage } from './pages/saas/SaasDashboardPage';
 import { StoreListPage } from './pages/saas/StoreListPage';
 import { StoreCreatePage } from './pages/saas/StoreCreatePage';
 import { StoreDetailsPage } from './pages/saas/StoreDetailsPage';
+import { PlanListPage } from './pages/saas/PlanListPage';
+import { SubscriptionListPage } from './pages/saas/SubscriptionListPage';
+import { SubscriptionExpiredPage } from './pages/store/SubscriptionExpiredPage';
 import { NotFoundPage } from './pages/errors/NotFoundPage';
 import { ProtectedStoreRoute } from './routes/ProtectedStoreRoute';
 import { ProtectedSaasRoute } from './routes/ProtectedSaasRoute';
@@ -45,6 +48,12 @@ export default function App() {
       </Route>
 
       {/* ---------------------------------------------------------------- */}
+      {/* Subscription expired (protected — store_user only, but never     */}
+      {/* wrapped in ProtectedStoreRoute itself to avoid a redirect loop)  */}
+      {/* ---------------------------------------------------------------- */}
+      <Route path="/subscription-expired" element={<SubscriptionExpiredPage />} />
+
+      {/* ---------------------------------------------------------------- */}
       {/* Store application (protected)                                    */}
       {/* ---------------------------------------------------------------- */}
       <Route
@@ -78,7 +87,9 @@ export default function App() {
         <Route path="stores" element={<StoreListPage />} />
         <Route path="stores/new" element={<StoreCreatePage />} />
         <Route path="stores/:id" element={<StoreDetailsPage />} />
-        {['subscriptions', 'plans', 'users', 'settings', 'audit-logs'].map((module) => (
+        <Route path="plans" element={<PlanListPage />} />
+        <Route path="subscriptions" element={<SubscriptionListPage />} />
+        {['users', 'settings', 'audit-logs'].map((module) => (
           <Route key={module} path={module} element={<ModulePlaceholderPage />} />
         ))}
       </Route>

@@ -24,9 +24,10 @@ supabase link --project-ref yvxsyvgccxdvmgazvofm
 supabase db push
 ```
 
-This includes the Phase 2 migrations (`0011`-`0013`) and the Phase 3
-migrations: `0014_store_management_functions.sql`,
-`0015_store_list_and_dashboard.sql`.
+This includes the Phase 2 migrations (`0011`-`0013`), the Phase 3
+migrations (`0014`-`0015`), and the Phase 4 migrations: `0016_subscription_plans.sql`,
+`0017_store_subscriptions.sql`, `0018_subscription_functions.sql`,
+`0019_subscription_list_and_dashboard.sql`.
 
 ## 4. Set function secrets
 
@@ -56,6 +57,16 @@ supabase functions deploy saas-update-store
 supabase functions deploy saas-store-status
 supabase functions deploy saas-reset-store-admin-password
 supabase functions deploy saas-dashboard-summary
+supabase functions deploy saas-list-plans
+supabase functions deploy saas-create-plan
+supabase functions deploy saas-update-plan
+supabase functions deploy saas-plan-status
+supabase functions deploy saas-list-subscriptions
+supabase functions deploy saas-get-store-subscription
+supabase functions deploy saas-change-store-plan
+supabase functions deploy saas-renew-subscription
+supabase functions deploy saas-extend-subscription
+supabase functions deploy saas-subscription-status
 ```
 
 Or all at once:
@@ -90,3 +101,48 @@ supabase functions serve
 
 Then point `VITE_API_BASE_URL` at `http://localhost:54321/functions/v1`
 in `.env.local` and run `npm run dev`.
+
+## Post-deploy verification checklist (run this yourself)
+
+This exact checklist could not be run from the environment that built this
+code — it has no network route to any `*.supabase.co`/`supabase.com`
+domain and no Supabase account access token. Run through this after `supabase
+db push` + `supabase functions deploy` complete successfully:
+
+1. **SaaS Admin auth**: log in at `/saas/login`, refresh the page (session
+   should persist), log out (should redirect to login, and a re-visit to
+   `/saas/dashboard` should bounce back to login).
+2. **Store creation**: as SaaS Admin, create a store via `/saas/stores/new`
+   (leave Plan as "Start with Trial"). Confirm in the Supabase dashboard
+   Table Editor that `stores`, `store_users`, `roles`, `role_permissions`,
+   `store_settings`, `store_subscriptions`, `subscription_history`, and
+   `audit_logs` all got a new row from one submit.
+3. **Store login**: log out of SaaS Admin, go to `/login`, sign in with the
+   new Store Code + `admin` + the password you set. Confirm you land on
+   `/app/dashboard` showing the right store/name/role.
+4. **Multi-tenant isolation**: create a second store, also with login id
+   `admin` but a different password. Confirm `STORE-0001/admin` and
+   `STORE-0002/admin` are independent — each password only works for its
+   own store.
+5. **Suspend/reactivate**: from SaaS Admin, suspend one test store. Confirm
+   that store's login now fails with "This store account is currently
+   unavailable...", then reactivate and confirm login works again.
+6. **Archive**: archive the other test store, confirm login is blocked but
+   the store still appears under the Archived filter in `/saas/stores`.
+7. **Password reset**: from the store's details page, reset its Store
+   Admin's password. Confirm the old password no longer works and the new
+   one does.
+8. **Subscription flows**: on a store's details page, try Change Plan,
+   Renew, and Extend — confirm `store_subscriptions` updates in place and
+   `subscription_history` gets a new row each time.
+9. **Expiry enforcement**: manually set a test store's
+   `store_subscriptions.current_period_end` to a past date via the SQL
+   editor, then log in as that store's user — you should be redirected to
+   `/subscription-expired` instead of the dashboard.
+10. **Security**: while logged in as a store_user, try opening
+    `/saas/stores` directly — it should redirect to `/saas/login`, not show
+    data. Try calling a `saas-*` endpoint's URL directly with the store
+    session cookie — it should return 401.
+
+If any of these fail, fix it before building further modules on top —
+don't layer new features over a foundation that isn't verified working.

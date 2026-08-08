@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { AuthPrincipal, StoreContext, StoreUserPrincipal, SaasAdminPrincipal } from '../../types/auth';
+import type { AuthPrincipal, StoreContext, StoreUserPrincipal, SaasAdminPrincipal, SubscriptionInfo } from '../../types/auth';
 import { fetchCurrentSession, logout as logoutRequest } from './authService';
 import { AppError } from '../../lib/errors';
 
 interface AuthContextValue {
   principal: AuthPrincipal;
   store: StoreContext | null;
+  subscription: SubscriptionInfo | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   /** Re-checks the session against the server. Call after login. */
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [principal, setPrincipal] = useState<AuthPrincipal>(null);
   const [store, setStore] = useState<StoreContext | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           storeCode: session.store.storeCode,
           businessName: session.store.businessName,
         });
+        setSubscription(session.subscription ?? null);
       } else {
         const saasAdmin: SaasAdminPrincipal = {
           kind: 'saas_admin',
@@ -56,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         setPrincipal(saasAdmin);
         setStore(null);
+        setSubscription(null);
       }
     } catch (error) {
       // No valid session (401) or the server is unreachable — either way,
@@ -66,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setPrincipal(null);
       setStore(null);
+      setSubscription(null);
     } finally {
       setIsLoading(false);
     }
@@ -86,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // just because a logout request failed to reach the server.
       setPrincipal(null);
       setStore(null);
+      setSubscription(null);
     }
   }, []);
 
@@ -101,13 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       principal,
       store,
+      subscription,
       isAuthenticated: principal !== null,
       isLoading,
       refresh,
       logout,
       hasPermission,
     }),
-    [principal, store, isLoading, refresh, logout, hasPermission]
+    [principal, store, subscription, isLoading, refresh, logout, hasPermission]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

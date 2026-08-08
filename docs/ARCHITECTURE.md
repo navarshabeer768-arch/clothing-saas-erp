@@ -297,3 +297,82 @@ Adds the SaaS Super Admin's ability to create/manage tenants end-to-end.
 
 New migrations: `0014_store_management_functions.sql`,
 `0015_store_list_and_dashboard.sql`.
+
+## 14. Phase 4 — Deployment status & Subscription Plans
+
+### 14.1 Deployment status (Part A)
+
+**As of the end of Phase 4, nothing in this repository — Phase 1 through 4
+— has been deployed to or verified against the live Supabase project**,
+despite a genuine attempt. Evidence:
+
+- The Supabase CLI (v2.113.0) was installed successfully in the build
+  environment.
+- `supabase link --project-ref yvxsyvgccxdvmgazvofm` failed with "Access
+  token not provided."
+- Direct `curl` to `https://yvxsyvgccxdvmgazvofm.supabase.co`,
+  `https://supabase.com`, and `https://api.supabase.com` all returned
+  `403 Host not in allowlist` from the build sandbox's network egress
+  proxy — meaning even a valid `SUPABASE_ACCESS_TOKEN` would not have been
+  enough; the sandbox cannot reach any Supabase domain at the network
+  level.
+
+This is a sandbox infrastructure limitation, not a defect in the
+migrations or Edge Functions. See `supabase/functions/DEPLOY.md` for exact
+deploy commands and a post-deploy verification checklist to run from a
+machine with real Supabase CLI access (`supabase login` + normal internet
+access).
+
+### 14.2 Subscription data model
+
+- **One current subscription per store**: `store_subscriptions` has a
+  UNIQUE constraint on `store_id` — there is exactly one row per store,
+  ever, updated in place on renewal/plan-change/status-change. This
+  trivially satisfies "a store cannot have multiple conflicting active
+  subscriptions" (there's only one row to conflict). Full history of every
+  change lives separately in the append-only `subscription_history` table.
+  See the header comment in `0017_store_subscriptions.sql` for the full
+  rationale against the alternative (multiple subscription rows with a
+  partial-unique-index-based "current" flag).
+- **Expiry is computed on read, not on a cron job**: `effective_status` in
+  `get_store_subscription_context()` flips `active`/`trial` to `expired`
+  the moment `current_period_end < now()`, so a subscription can never
+  grant access past its paid period even if no scheduled job has updated
+  the stored `status` column yet.
+- **Store status vs subscription status are separate and never conflated**
+  (Phase 4 §33): `stores.status` (active/suspended/inactive/archived) is
+  about the tenant account itself; `store_subscriptions.status`
+  (trial/active/expired/suspended/cancelled) is about billing. A store can
+  be `active` while its subscription is `expired` — the store account
+  still exists and is manageable by SaaS Admin, but store_user business
+  access is blocked.
+- **Store creation extended, not rebuilt**: `create_store_with_admin()`
+  (Phase 3) was extended via `create or replace function` with two new
+  *trailing, default-valued* parameters (`p_plan_id`, `p_billing_cycle`).
+  Existing callers that don't pass them keep working unchanged; omitting
+  `p_plan_id` auto-assigns the `TRIAL` plan by code, matching "Recommended
+  default: Trial plan."
+- **Feature/limit architecture**: `plan_features` (feature_key → enabled +
+  optional limit_value) backs `has_store_feature()`; the plan's own
+  `max_users`/`max_branches`/`max_products`/`max_storage_mb` columns back
+  `check_plan_limit()`. Only `users` is wired against real counted data in
+  Phase 4 (the only countable resource that exists yet) — `branches` and
+  `products` return the plan's limit with `current` left `null` until
+  those modules are built.
+- **`requireActiveSubscription()`** (`_shared/authMiddleware.ts`) is the
+  choke point every future business-module Edge Function should call right
+  after `requireStoreSession()`. It throws 402 with a specific code
+  (`SUBSCRIPTION_EXPIRED`/`SUBSCRIPTION_SUSPENDED`/`SUBSCRIPTION_CANCELLED`)
+  rather than a generic 403, so the frontend can route to
+  `/subscription-expired` specifically. No Phase 4 business module exists
+  yet to call it, but the guard exists so Phase 5+ never has to
+  reimplement this per-endpoint.
+- **Frontend enforcement**: `ProtectedStoreRoute` checks
+  `subscription.effectiveStatus` (from `session-me`, refreshed on every
+  app load) and redirects to `/subscription-expired` for
+  expired/suspended/cancelled — re-checked on every session lookup, not
+  just at login time, per §34.
+
+New migrations: `0016_subscription_plans.sql`,
+`0017_store_subscriptions.sql`, `0018_subscription_functions.sql`,
+`0019_subscription_list_and_dashboard.sql`.

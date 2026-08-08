@@ -21,6 +21,7 @@ import {
   TableCell,
 } from '../../components/ui';
 import { StoreStatusBadge } from '../../features/store-management/StoreStatusBadge';
+import { StoreSubscriptionCard } from '../../features/subscriptions/StoreSubscriptionCard';
 import {
   getStore,
   changeStoreStatus,
@@ -322,6 +323,8 @@ export function StoreDetailsPage() {
           </CardBody>
         </Card>
       )}
+
+      {store && <StoreSubscriptionCard storeId={store.id} />}
 
       <Card className="mb-6">
         <CardHeader>

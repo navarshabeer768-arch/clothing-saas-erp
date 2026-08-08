@@ -8,8 +8,8 @@ import { useAuth } from '../features/auth/AuthContext';
 const NAV_ITEMS = [
   { to: '/saas/dashboard', label: 'Dashboard', enabled: true },
   { to: '/saas/stores', label: 'Stores', enabled: true },
-  { to: '/saas/subscriptions', label: 'Subscriptions', enabled: false },
-  { to: '/saas/plans', label: 'Plans', enabled: false },
+  { to: '/saas/subscriptions', label: 'Subscriptions', enabled: true },
+  { to: '/saas/plans', label: 'Plans', enabled: true },
   { to: '/saas/users', label: 'SaaS Users', enabled: false },
   { to: '/saas/settings', label: 'Settings', enabled: false },
   { to: '/saas/audit-logs', label: 'Audit Logs', enabled: false },

@@ -208,6 +208,9 @@ Deno.serve(async (req) => {
   });
 
   // --- Step 10: Safe response (no password_hash, no raw session hash) ---
+  const { data: subContext } = await supabaseAdmin.rpc('get_store_subscription_context', { p_store_id: store.id });
+  const subRow = Array.isArray(subContext) ? subContext[0] : subContext;
+
   return jsonResponse(
     200,
     {
@@ -226,6 +229,16 @@ Deno.serve(async (req) => {
         timezone: store.timezone,
         logoUrl: store.logo_url,
       },
+      subscription: subRow
+        ? {
+            status: subRow.status,
+            effectiveStatus: subRow.effective_status,
+            planCode: subRow.plan_code,
+            planName: subRow.plan_name,
+            currentPeriodEnd: subRow.current_period_end,
+            daysRemaining: subRow.days_remaining,
+          }
+        : null,
       expiresAt,
     },
     origin,

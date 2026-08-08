@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
             storeCode: context.storeCode,
             businessName: context.storeName,
           },
+          subscription: context.subscription,
         },
         origin
       );

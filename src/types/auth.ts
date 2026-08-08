@@ -10,6 +10,15 @@ import type { StoreStatus, StoreUserStatus, SaasAdminStatus, UUID } from './data
  * token, not from this client-side object. See docs/ARCHITECTURE.md
  * § Tenant Isolation Strategy.
  */
+export interface SubscriptionInfo {
+  status: string;
+  effectiveStatus: 'trial' | 'active' | 'expired' | 'suspended' | 'cancelled';
+  planCode: string;
+  planName: string;
+  currentPeriodEnd: string;
+  daysRemaining: number;
+}
+
 export interface StoreUserPrincipal {
   kind: 'store_user';
   id: UUID;
@@ -91,6 +100,7 @@ export type SessionMeResponse =
       kind: 'store_user';
       user: { id: UUID; loginId: string; fullName: string; roleId: UUID | null; permissions: string[] };
       store: { id: UUID; storeCode: string; businessName: string };
+      subscription: SubscriptionInfo | null;
     }
   | {
       kind: 'saas_admin';

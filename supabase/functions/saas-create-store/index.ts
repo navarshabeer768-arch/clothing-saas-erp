@@ -34,6 +34,8 @@ interface CreateStorePayload {
   currencyCode?: string;
   timezone?: string;
   taxNumber?: string;
+  planId?: string; // omit / null -> auto-assign the TRIAL plan
+  billingCycle?: 'trial' | 'monthly' | 'yearly' | 'custom';
   admin: {
     fullName?: string;
     loginId?: string;
@@ -160,6 +162,8 @@ Deno.serve(async (req) => {
     p_admin_login_id: payload.admin.loginId!.trim(),
     p_admin_password_hash: adminPasswordHash,
     p_admin_phone: payload.admin.phone?.trim() ?? '',
+    p_plan_id: payload.planId ?? null,
+    p_billing_cycle: payload.billingCycle ?? null,
   });
 
   if (error) {

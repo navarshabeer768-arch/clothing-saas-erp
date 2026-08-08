@@ -51,3 +51,33 @@ verify_jwt = false
 
 [functions.saas-dashboard-summary]
 verify_jwt = false
+
+[functions.saas-list-plans]
+verify_jwt = false
+
+[functions.saas-create-plan]
+verify_jwt = false
+
+[functions.saas-update-plan]
+verify_jwt = false
+
+[functions.saas-plan-status]
+verify_jwt = false
+
+[functions.saas-list-subscriptions]
+verify_jwt = false
+
+[functions.saas-get-store-subscription]
+verify_jwt = false
+
+[functions.saas-change-store-plan]
+verify_jwt = false
+
+[functions.saas-renew-subscription]
+verify_jwt = false
+
+[functions.saas-extend-subscription]
+verify_jwt = false
+
+[functions.saas-subscription-status]
+verify_jwt = false

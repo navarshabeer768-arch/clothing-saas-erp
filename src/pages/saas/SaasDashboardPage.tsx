@@ -49,6 +49,14 @@ export function SaasDashboardPage() {
             <StatCard label="Total Store Users" value={data.summary.totalStoreUsers} />
           </div>
 
+          <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <StatCard label="Trial Stores" value={data.summary.trialStores} />
+            <StatCard label="Active Subscriptions" value={data.summary.activeSubscriptions} tone="success" />
+            <StatCard label="Expired Subscriptions" value={data.summary.expiredSubscriptions} tone="danger" />
+            <StatCard label="Expiring (7 days)" value={data.summary.expiringWithin7Days} tone="warning" />
+            <StatCard label="Expiring (30 days)" value={data.summary.expiringWithin30Days} tone="warning" />
+          </div>
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader className="flex items-center justify-between">
@@ -100,6 +108,34 @@ export function SaasDashboardPage() {
               </CardBody>
             </Card>
           </div>
+
+          {data.expiringSoon.length > 0 && (
+            <Card className="mt-4">
+              <CardHeader>
+                <h2 className="text-sm font-semibold text-brand-800">Expiring Soon</h2>
+              </CardHeader>
+              <CardBody>
+                <ul className="flex flex-col gap-3">
+                  {data.expiringSoon.map((s) => (
+                    <li key={s.storeId} className="flex items-center justify-between">
+                      <div>
+                        <Link to={`/saas/stores/${s.storeId}`} className="text-sm font-medium text-brand-800 hover:underline">
+                          {s.storeCode}
+                        </Link>
+                        <p className="text-xs text-brand-500">
+                          {s.businessName} · {s.planName}
+                        </p>
+                      </div>
+                      <div className="text-right text-xs text-brand-500">
+                        <p>{new Date(s.currentPeriodEnd).toLocaleDateString()}</p>
+                        <p>{s.daysRemaining} day(s) left</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
+          )}
         </>
       ) : null}
     </div>

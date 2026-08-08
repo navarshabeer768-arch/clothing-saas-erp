@@ -35,6 +35,22 @@ Deno.serve(async (req) => {
   }
   const summary = Array.isArray(summaryRows) ? summaryRows[0] : summaryRows;
 
+  const { data: subSummaryRows, error: subSummaryError } = await supabaseAdmin.rpc('saas_subscription_dashboard_summary');
+  if (subSummaryError) {
+    console.error('[saas-dashboard-summary] subscription summary query failed:', subSummaryError.message);
+  }
+  const subSummary = Array.isArray(subSummaryRows) ? subSummaryRows[0] : subSummaryRows;
+
+  const { data: expiringSoon } = await supabaseAdmin.rpc('list_store_subscriptions', {
+    p_search: null,
+    p_plan_id: null,
+    p_status: null,
+    p_billing_cycle: null,
+    p_expiring_within_days: 7,
+    p_page: 1,
+    p_page_size: 5,
+  });
+
   const { data: recentStores } = await supabaseAdmin
     .from('stores')
     .select('id, store_code, business_name, owner_name, status, created_at')
@@ -59,7 +75,20 @@ Deno.serve(async (req) => {
         inactiveStores: Number(summary?.inactive_stores ?? 0),
         totalStoreUsers: Number(summary?.total_store_users ?? 0),
         storesCreatedThisMonth: Number(summary?.stores_created_this_month ?? 0),
+        trialStores: Number(subSummary?.trial_stores ?? 0),
+        activeSubscriptions: Number(subSummary?.active_subscriptions ?? 0),
+        expiredSubscriptions: Number(subSummary?.expired_subscriptions ?? 0),
+        expiringWithin7Days: Number(subSummary?.expiring_within_7_days ?? 0),
+        expiringWithin30Days: Number(subSummary?.expiring_within_30_days ?? 0),
       },
+      expiringSoon: (expiringSoon ?? []).map((row: Record<string, unknown>) => ({
+        storeId: row.store_id,
+        storeCode: row.store_code,
+        businessName: row.business_name,
+        planName: row.plan_name,
+        currentPeriodEnd: row.current_period_end,
+        daysRemaining: row.days_remaining,
+      })),
       recentStores: (recentStores ?? []).map((s) => ({
         id: s.id,
         storeCode: s.store_code,

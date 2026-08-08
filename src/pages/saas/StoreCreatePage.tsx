@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader, Card, CardBody, Input, Select, Button, useToast } from '../../components/ui';
 import { createStore } from '../../features/store-management/storeManagementService';
+import { listPlans } from '../../features/subscriptions/subscriptionService';
+import type { SubscriptionPlan } from '../../types/subscriptions';
 import { AppError } from '../../lib/errors';
 
 interface FormState {
@@ -26,6 +28,8 @@ interface FormState {
   adminPassword: string;
   adminConfirmPassword: string;
   adminPhone: string;
+  planId: string;
+  billingCycle: string;
 }
 
 const INITIAL_STATE: FormState = {
@@ -49,6 +53,8 @@ const INITIAL_STATE: FormState = {
   adminPassword: '',
   adminConfirmPassword: '',
   adminPhone: '',
+  planId: '',
+  billingCycle: 'trial',
 };
 
 const CURRENCY_OPTIONS = ['QAR', 'AED', 'SAR', 'USD', 'INR', 'KWD', 'BHD', 'OMR', 'EUR', 'GBP'];
@@ -62,6 +68,13 @@ export function StoreCreatePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdResult, setCreatedResult] = useState<{ storeCode: string; adminLoginId: string } | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+
+  useEffect(() => {
+    listPlans()
+      .then((r) => setPlans(r.plans.filter((p) => p.status === 'active')))
+      .catch(() => undefined);
+  }, []);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -90,6 +103,8 @@ export function StoreCreatePage() {
         currencyCode: form.currencyCode,
         timezone: form.timezone,
         taxNumber: form.taxNumber || undefined,
+        planId: form.planId || undefined,
+        billingCycle: (form.billingCycle as 'trial' | 'monthly' | 'yearly' | 'custom') || undefined,
         admin: {
           fullName: form.adminFullName,
           loginId: form.adminLoginId,
@@ -199,6 +214,29 @@ export function StoreCreatePage() {
                 ))}
               </Select>
               <Input label="Tax/VAT Number (optional)" value={form.taxNumber} onChange={(e) => updateField('taxNumber', e.target.value)} className="sm:col-span-2" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <h2 className="mb-4 text-sm font-semibold text-brand-800">Subscription</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select label="Plan" value={form.planId} onChange={(e) => updateField('planId', e.target.value)}>
+                <option value="">Start with Trial (default)</option>
+                {plans
+                  .filter((p) => p.code !== 'TRIAL')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </Select>
+              <Select label="Billing Cycle" value={form.billingCycle} onChange={(e) => updateField('billingCycle', e.target.value)} disabled={!form.planId}>
+                <option value="trial">Trial</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </Select>
             </div>
           </CardBody>
         </Card>

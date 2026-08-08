@@ -98,6 +98,8 @@ export interface CreateStoreRequest {
   currencyCode: string;
   timezone: string;
   taxNumber?: string;
+  planId?: string;
+  billingCycle?: 'trial' | 'monthly' | 'yearly' | 'custom';
   admin: {
     fullName: string;
     loginId: string;
@@ -142,6 +144,11 @@ export interface SaasDashboardSummary {
   inactiveStores: number;
   totalStoreUsers: number;
   storesCreatedThisMonth: number;
+  trialStores: number;
+  activeSubscriptions: number;
+  expiredSubscriptions: number;
+  expiringWithin7Days: number;
+  expiringWithin30Days: number;
 }
 
 export interface SaasDashboardResponse {
@@ -155,6 +162,14 @@ export interface SaasDashboardResponse {
     createdAt: ISODateTime;
   }>;
   recentActivity: Array<{ id: UUID; action: string; createdAt: ISODateTime; storeId: UUID | null }>;
+  expiringSoon: Array<{
+    storeId: UUID;
+    storeCode: string;
+    businessName: string;
+    planName: string;
+    currentPeriodEnd: ISODateTime;
+    daysRemaining: number;
+  }>;
 }
 
 /** Backend validation error shape returned by create/update store endpoints. */

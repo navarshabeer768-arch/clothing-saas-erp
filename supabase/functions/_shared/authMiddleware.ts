@@ -22,6 +22,15 @@ export class AuthError extends Error {
   }
 }
 
+export interface SubscriptionSummary {
+  status: string;
+  effectiveStatus: string;
+  planCode: string;
+  planName: string;
+  currentPeriodEnd: string;
+  daysRemaining: number;
+}
+
 export interface StoreSessionContext {
   kind: 'store_user';
   sessionId: string;
@@ -34,6 +43,7 @@ export interface StoreSessionContext {
   fullName: string;
   roleId: string | null;
   permissions: string[];
+  subscription: SubscriptionSummary | null;
 }
 
 export interface SaasSessionContext {
@@ -107,6 +117,8 @@ export async function requireStoreSession(req: Request): Promise<StoreSessionCon
   // Throttled activity update — see updateSessionActivity() below; callers
   // decide whether to invoke it (not every request needs to write).
 
+  const subscription = await loadSubscriptionSummary(store.id);
+
   return {
     kind: 'store_user',
     sessionId: session.id,
@@ -119,6 +131,7 @@ export async function requireStoreSession(req: Request): Promise<StoreSessionCon
     fullName: user.full_name,
     roleId: user.role_id,
     permissions,
+    subscription,
   };
 }
 
@@ -166,6 +179,64 @@ export async function requireSaasAdminSession(req: Request): Promise<SaasSession
     loginId: admin.login_id,
     fullName: admin.full_name,
   };
+}
+
+/**
+ * Loads a compact subscription summary for a store using
+ * get_store_subscription_context() (Phase 4). Returns null if the store
+ * somehow has no subscription row (shouldn't happen for stores created via
+ * create_store_with_admin, but older/manually-inserted rows might lack
+ * one) — callers treat null as "no subscription info available" rather
+ * than failing the whole session lookup, since store login itself must
+ * keep working even if subscription data is temporarily inconsistent.
+ */
+async function loadSubscriptionSummary(storeId: string): Promise<SubscriptionSummary | null> {
+  const { data, error } = await supabaseAdmin.rpc('get_store_subscription_context', { p_store_id: storeId });
+  if (error) {
+    console.error('[auth] failed to load subscription context:', error.message);
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+
+  return {
+    status: row.status,
+    effectiveStatus: row.effective_status,
+    planCode: row.plan_code,
+    planName: row.plan_name,
+    currentPeriodEnd: row.current_period_end,
+    daysRemaining: row.days_remaining,
+  };
+}
+
+/**
+ * Guard for future business-module endpoints (Products, Sales, POS, ...).
+ * Phase 4 itself has no business modules to protect yet, but this is the
+ * single choke point every future endpoint should call right after
+ * requireStoreSession() so none of them have to reimplement subscription
+ * enforcement individually. Throws 402 if the subscription has expired or
+ * been suspended/cancelled — distinct from 403 (permission denied) so the
+ * frontend can route to /subscription-expired specifically rather than a
+ * generic "forbidden" screen.
+ */
+export function requireActiveSubscription(context: StoreSessionContext): void {
+  if (!context.subscription) {
+    // No subscription row at all is treated as not-yet-provisioned rather
+    // than expired — block business access with the same status code so
+    // the frontend handles it identically, but log for investigation since
+    // every store should have one.
+    console.error('[auth] store has no subscription context:', context.storeId);
+    throw new AuthError(402, 'SUBSCRIPTION_REQUIRED', 'This store has no active subscription.');
+  }
+  if (context.subscription.effectiveStatus === 'expired') {
+    throw new AuthError(402, 'SUBSCRIPTION_EXPIRED', 'Your store subscription has expired. Please contact the service provider.');
+  }
+  if (context.subscription.effectiveStatus === 'suspended') {
+    throw new AuthError(402, 'SUBSCRIPTION_SUSPENDED', 'Your store subscription is suspended. Please contact the service provider.');
+  }
+  if (context.subscription.effectiveStatus === 'cancelled') {
+    throw new AuthError(402, 'SUBSCRIPTION_CANCELLED', 'Your store subscription has been cancelled. Please contact the service provider.');
+  }
 }
 
 /** Loads the effective permission_key list for a store_user's role. */
