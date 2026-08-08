@@ -68,6 +68,15 @@ Full detail in `docs/ARCHITECTURE.md` §7–8.
 See `docs/ARCHITECTURE.md` §9 for the full migration list and how to apply
 them (`supabase db push`, or paste into the Supabase SQL Editor in order).
 
+## Deployment
+
+- **Frontend:** GitHub Pages, auto-deployed on every push to `main` via
+  `.github/workflows/deploy.yml`.
+  Live at: https://navarshabeer768-arch.github.io/clothing-saas-erp/
+- **Backend (Phase 2):** GitHub Pages is static-only and can't run the
+  `server/` layer — that needs Supabase Edge Functions (or another
+  server/edge host). See `docs/ARCHITECTURE.md` §8.1.
+
 ## Status
 
 Phase 1 (this phase): foundation only. See the completion report delivered

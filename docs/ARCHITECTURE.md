@@ -116,6 +116,38 @@ Supabase PostgreSQL (RLS default-deny for anon/authenticated)
   use Supabase Auth), and is safe to ship precisely because RLS blocks it
   from doing anything sensitive.
 
+### 8.1 Hosting split: GitHub Pages (frontend) + a real server (Phase 2)
+
+The frontend is deployed to **GitHub Pages**
+(`https://navarshabeer768-arch.github.io/clothing-saas-erp/`), via
+`.github/workflows/deploy.yml` on every push to `main`. GitHub Pages is
+**static-file hosting only** — it cannot execute the `server/` layer
+described above. This is fine and expected: the diagram's split into
+"frontend" and "trusted server" was designed around exactly this
+constraint from Phase 1.
+
+Practical consequences:
+
+- `SUPABASE_SERVICE_ROLE_KEY` must never be added as a GitHub Pages/Actions
+  build-time (`VITE_...`) secret — anything with a `VITE_` prefix is
+  compiled into the public JS bundle that ships to every visitor's browser.
+  Only `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL`
+  are set as repo secrets for the Pages build.
+- Phase 2's server endpoints (`server/functions/README.md`) need to run
+  somewhere that *can* execute code — Supabase Edge Functions is the
+  natural fit here since the project already uses Supabase (the service
+  role key stays inside Supabase's own secret store via
+  `supabase secrets set`). A separate Node/Edge host works too.
+- `VITE_API_BASE_URL` in the GitHub Pages build points at wherever that
+  server ends up (e.g. `https://<project-ref>.functions.supabase.co`),
+  configured as a repo secret, not hard-coded.
+- Because GitHub Pages has no server-side rewrites, deep links
+  (`/app/dashboard`) would 404 on a hard refresh. `public/404.html` +
+  the restore script in `index.html` implement the standard
+  [SPA-on-GitHub-Pages redirect trick](https://github.com/rafgraph/spa-github-pages)
+  to work around this — this is a hosting-layer workaround, not a security
+  boundary, and has no bearing on tenant isolation or RLS.
+
 ## 9. Database migrations
 
 All schema lives in versioned, numbered SQL files under
