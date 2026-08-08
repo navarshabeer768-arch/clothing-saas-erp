@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Clothing SaaS ERP</title>
+  <!--
+    GitHub Pages has no server, so it can't do the SPA rewrite a real host
+    (Vercel/Netlify) would do for deep links like /app/dashboard. When
+    someone hits a route directly or refreshes, GitHub Pages serves this
+    404.html. This script stashes the intended path and redirects to the
+    real index.html, which restores it (see the script in index.html).
+    Well-known technique: https://github.com/rafgraph/spa-github-pages
+  -->
+  <script>
+    var pathSegmentsToKeep = 1; // keep "/clothing-saas-erp" repo segment
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body></body>
+</html>
