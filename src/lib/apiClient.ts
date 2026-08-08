@@ -55,14 +55,16 @@ export async function apiRequest<TResponse>(
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     let code = 'REQUEST_FAILED';
+    let fieldErrors: Record<string, string> | undefined;
     try {
       const payload = await response.json();
       if (typeof payload?.message === 'string') message = payload.message;
       if (typeof payload?.code === 'string') code = payload.code;
+      if (payload?.errors && typeof payload.errors === 'object') fieldErrors = payload.errors;
     } catch {
       // Response body wasn't JSON — keep the generic message above.
     }
-    throw new AppError(code, message, { status: response.status });
+    throw new AppError(code, message, { status: response.status, errors: fieldErrors });
   }
 
   if (response.status === 204) {

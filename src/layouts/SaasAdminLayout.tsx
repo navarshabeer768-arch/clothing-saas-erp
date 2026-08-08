@@ -7,7 +7,7 @@ import { useAuth } from '../features/auth/AuthContext';
 
 const NAV_ITEMS = [
   { to: '/saas/dashboard', label: 'Dashboard', enabled: true },
-  { to: '/saas/stores', label: 'Stores', enabled: false },
+  { to: '/saas/stores', label: 'Stores', enabled: true },
   { to: '/saas/subscriptions', label: 'Subscriptions', enabled: false },
   { to: '/saas/plans', label: 'Plans', enabled: false },
   { to: '/saas/users', label: 'SaaS Users', enabled: false },

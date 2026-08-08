@@ -30,3 +30,24 @@ verify_jwt = false
 
 [functions.admin-reset-store-user-password]
 verify_jwt = false
+
+[functions.saas-list-stores]
+verify_jwt = false
+
+[functions.saas-get-store]
+verify_jwt = false
+
+[functions.saas-create-store]
+verify_jwt = false
+
+[functions.saas-update-store]
+verify_jwt = false
+
+[functions.saas-store-status]
+verify_jwt = false
+
+[functions.saas-reset-store-admin-password]
+verify_jwt = false
+
+[functions.saas-dashboard-summary]
+verify_jwt = false

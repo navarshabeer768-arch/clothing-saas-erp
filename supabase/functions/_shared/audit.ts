@@ -10,14 +10,16 @@ export interface AuditLogInput {
   action: string;
   entityType?: string | null;
   entityId?: string | null;
+  oldValues?: Record<string, unknown> | null;
+  newValues?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
   ipAddress?: string | null;
 }
 
 /**
  * Writes an audit_logs row. Never pass plain-text passwords or password
- * hashes in `metadata` — this function does not scrub input, callers are
- * responsible for only including safe fields.
+ * hashes in `oldValues`/`newValues`/`metadata` — this function does not
+ * scrub input, callers are responsible for only including safe fields.
  */
 export async function writeAuditLog(input: AuditLogInput): Promise<void> {
   const { error } = await supabaseAdmin.from('audit_logs').insert({
@@ -28,6 +30,8 @@ export async function writeAuditLog(input: AuditLogInput): Promise<void> {
     action: input.action,
     entity_type: input.entityType ?? null,
     entity_id: input.entityId ?? null,
+    old_values: input.oldValues ?? null,
+    new_values: input.newValues ?? null,
     metadata: input.metadata ?? null,
     ip_address: input.ipAddress ?? null,
   });

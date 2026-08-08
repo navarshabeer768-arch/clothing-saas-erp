@@ -24,8 +24,9 @@ supabase link --project-ref yvxsyvgccxdvmgazvofm
 supabase db push
 ```
 
-This includes the Phase 2 migrations: `0011_login_rate_limits.sql`,
-`0012_saas_admin_lockout_fields.sql`, `0013_auth_helper_functions.sql`.
+This includes the Phase 2 migrations (`0011`-`0013`) and the Phase 3
+migrations: `0014_store_management_functions.sql`,
+`0015_store_list_and_dashboard.sql`.
 
 ## 4. Set function secrets
 
@@ -48,6 +49,13 @@ supabase functions deploy logout
 supabase functions deploy logout-all
 supabase functions deploy change-password
 supabase functions deploy admin-reset-store-user-password
+supabase functions deploy saas-list-stores
+supabase functions deploy saas-get-store
+supabase functions deploy saas-create-store
+supabase functions deploy saas-update-store
+supabase functions deploy saas-store-status
+supabase functions deploy saas-reset-store-admin-password
+supabase functions deploy saas-dashboard-summary
 ```
 
 Or all at once:

@@ -58,6 +58,18 @@ Supabase Edge Functions. See `docs/ARCHITECTURE.md` §12 and
 **deployment requires your own `supabase login`**, which couldn't be done
 from the environment that built this.
 
+## SaaS Store Management (Phase 3)
+
+SaaS Super Admins can create, search, filter, view, edit, suspend,
+activate, archive, and reset the Store Admin password for any store from
+`/saas/stores`. Store creation is atomic (store + role + permissions +
+admin user + settings + audit, all-or-nothing) via a single Postgres
+function. See `docs/ARCHITECTURE.md` §13. New Edge Functions
+(`saas-list-stores`, `saas-get-store`, `saas-create-store`,
+`saas-update-store`, `saas-store-status`, `saas-reset-store-admin-password`,
+`saas-dashboard-summary`) need deploying the same way as the Phase 2
+functions — see `supabase/functions/DEPLOY.md`.
+
 ## Why no Supabase Auth?
 
 We use a fully custom login system (Store ID + Login ID + Password, with

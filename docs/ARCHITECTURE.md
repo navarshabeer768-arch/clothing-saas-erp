@@ -168,6 +168,8 @@ All schema lives in versioned, numbered SQL files under
 | `0011_login_rate_limits.sql` | DB-backed login rate limiting (Phase 2) |
 | `0012_saas_admin_lockout_fields.sql` | Adds lockout fields to `saas_admins` (Phase 2) |
 | `0013_auth_helper_functions.sql` | Atomic rate-limit/lockout SQL functions (Phase 2) |
+| `0014_store_management_functions.sql` | Atomic store creation + status-change transactions (Phase 3) |
+| `0015_store_list_and_dashboard.sql` | Store search/pagination + SaaS dashboard summary RPCs (Phase 3) |
 
 Development-only seed data lives separately in `supabase/seed/` (excluded
 from automatic migration runs — see that file's header for how to apply it
@@ -256,3 +258,42 @@ Summary of decisions (full detail in code comments at each referenced file):
   actual enforcement. Every future endpoint must call the backend check —
   the frontend guard alone is never sufficient.
 
+## 13. Phase 3 — SaaS Store Management
+
+Adds the SaaS Super Admin's ability to create/manage tenants end-to-end.
+
+- **Atomic store creation:** `create_store_with_admin()` (SQL function,
+  `0014_store_management_functions.sql`) creates the store, its "Store
+  Admin" role, permission assignments, the initial admin user, default
+  settings, and an audit row — all inside one Postgres function call, so a
+  raised exception rolls back everything. No store can ever end up without
+  an admin, or an admin without a role. Password hashing happens in the
+  Edge Function (`saas-create-store`) before calling this function —
+  Postgres never hashes passwords itself, keeping one hashing code path.
+- **Store status changes:** `set_store_status()` updates status, revokes
+  every active `store_user_sessions` row for that store whenever it leaves
+  `active`, and writes audit entries — atomically, so "suspended but old
+  sessions still valid" can't happen as an inconsistent partial state.
+- **Search/pagination:** `list_stores()` does search+filter+pagination+user
+  counts in one query rather than fetching every store into JS.
+- **Every `saas-*` Edge Function requires `requireSaasAdminSession()`** —
+  verified directly in code, not just documented (see the endpoint files
+  under `supabase/functions/saas-*/`). A store_user session can never reach
+  these endpoints.
+- **Update whitelist:** `saas-update-store` explicitly lists editable
+  fields and writes only those columns — never a generic
+  `update(stores).set(req.body)`. `store_code` is not in the whitelist and
+  cannot be changed through this endpoint at all.
+- **Two separate password-reset endpoints, deliberately:**
+  `admin-reset-store-user-password` (Phase 2) is for a Store Admin
+  resetting a teammate within their own session-derived store;
+  `saas-reset-store-admin-password` (Phase 3) is for a SaaS Admin acting
+  across any store. Both independently re-verify the target user actually
+  belongs to the store in question before touching anything.
+- **No impersonation ("Login as Store") was implemented** — Phase 3 spec
+  explicitly said not to add this insecurely, and a properly audited
+  version (special session type, visible impersonation indicator, exit
+  path) is deferred to a future phase.
+
+New migrations: `0014_store_management_functions.sql`,
+`0015_store_list_and_dashboard.sql`.
