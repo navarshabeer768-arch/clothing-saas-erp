@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { SidebarItem } from '../components/ui/SidebarItem';
+import { Dropdown } from '../components/ui/Dropdown';
 import { cn } from '../lib/cn';
+import { useAuth } from '../features/auth/AuthContext';
 
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard', enabled: true },
@@ -104,6 +106,14 @@ function SidebarBrand({
 }
 
 function TopNav({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
+  const { principal, store, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logout();
+    navigate('/login', { replace: true });
+  }
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-brand-100 bg-white px-4 sm:px-6 lg:px-8">
       <button
@@ -114,10 +124,26 @@ function TopNav({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         ☰
       </button>
       <div className="hidden text-sm text-brand-500 lg:block">
-        {/* Future breadcrumb / store name placeholder */}
+        {store ? `${store.businessName} · ${store.storeCode}` : ''}
       </div>
       <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-full bg-brand-200" aria-hidden="true" />
+        <Dropdown
+          align="right"
+          trigger={
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-200 text-xs font-semibold text-brand-800"
+                aria-hidden="true"
+              >
+                {principal && principal.kind === 'store_user' ? principal.fullName.slice(0, 1).toUpperCase() : ''}
+              </div>
+              <span className="hidden text-sm font-medium text-brand-700 sm:block">
+                {principal && principal.kind === 'store_user' ? principal.fullName : ''}
+              </span>
+            </div>
+          }
+          items={[{ label: 'Sign out', onSelect: handleLogout, danger: true }]}
+        />
       </div>
     </header>
   );

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { SidebarItem } from '../components/ui/SidebarItem';
+import { Dropdown } from '../components/ui/Dropdown';
 import { cn } from '../lib/cn';
+import { useAuth } from '../features/auth/AuthContext';
 
 const NAV_ITEMS = [
   { to: '/saas/dashboard', label: 'Dashboard', enabled: true },
@@ -20,6 +22,13 @@ const NAV_ITEMS = [
  */
 export function SaasAdminLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { principal, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logout();
+    navigate('/saas/login', { replace: true });
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-brand-50">
@@ -64,7 +73,23 @@ export function SaasAdminLayout() {
           <span className="hidden text-sm font-medium text-brand-500 lg:block">
             SaaS Platform Administration
           </span>
-          <div className="h-9 w-9 rounded-full bg-brand-200" aria-hidden="true" />
+          <Dropdown
+            align="right"
+            trigger={
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-200 text-xs font-semibold text-brand-800"
+                  aria-hidden="true"
+                >
+                  {principal && principal.kind === 'saas_admin' ? principal.fullName.slice(0, 1).toUpperCase() : ''}
+                </div>
+                <span className="hidden text-sm font-medium text-brand-700 sm:block">
+                  {principal && principal.kind === 'saas_admin' ? principal.fullName : ''}
+                </span>
+              </div>
+            }
+            items={[{ label: 'Sign out', onSelect: handleLogout, danger: true }]}
+          />
         </header>
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />

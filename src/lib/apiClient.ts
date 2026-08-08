@@ -1,22 +1,25 @@
 import { AppError } from './errors';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
-
 /**
  * All privileged operations (login, password verification, store creation,
  * session management, etc.) go through this client to the trusted
- * server-side API — never directly through the Supabase browser client.
- * The Phase 2 endpoints this calls are expected to live under
- * `${VITE_API_BASE_URL}/api/...`; none exist yet in Phase 1, so calling
- * these before Phase 2 will surface a clear AppError rather than failing
- * silently.
+ * server-side Edge Functions — never directly through the Supabase browser
+ * client.
+ *
+ * Base URL: Supabase Edge Functions live at
+ * `${SUPABASE_URL}/functions/v1/<function-name>`. VITE_API_BASE_URL should
+ * be set to that base (e.g. `https://yvxsyvgccxdvmgazvofm.supabase.co/functions/v1`)
+ * once the functions are deployed — see supabase/functions/README.md.
+ *
+ * AUTH TRANSPORT: session auth uses an HttpOnly cookie set by the server
+ * (see supabase/functions/_shared/cookies.ts), not a bearer token kept in
+ * JS. `credentials: 'include'` is required on every call so the browser
+ * attaches/receives that cookie cross-origin (GitHub Pages frontend calling
+ * a Supabase Edge Function origin) — see docs/ARCHITECTURE.md §8.1 for the
+ * Safari third-party-cookie caveat that comes with that cross-origin setup.
  */
 
-let currentToken: string | null = null;
-
-export function setApiSessionToken(token: string | null) {
-  currentToken = token;
-}
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -35,9 +38,9 @@ export async function apiRequest<TResponse>(
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       signal,
+      credentials: 'include', // send/receive the HttpOnly session cookie
       headers: {
         'Content-Type': 'application/json',
-        ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });

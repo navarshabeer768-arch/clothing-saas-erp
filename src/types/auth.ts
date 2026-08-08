@@ -2,7 +2,7 @@ import type { StoreStatus, StoreUserStatus, SaasAdminStatus, UUID } from './data
 
 /**
  * Shape of the authenticated principal kept in frontend memory/context after
- * a successful login against the (Phase 2) server-side auth endpoint.
+ * a successful login against the Phase 2 server-side auth endpoint.
  *
  * IMPORTANT: this is the ONLY place store_id should be read from for
  * rendering purposes. It must never be trusted for authorization decisions —
@@ -17,7 +17,7 @@ export interface StoreUserPrincipal {
   storeCode: string;
   loginId: string;
   fullName: string;
-  status: StoreUserStatus;
+  status?: StoreUserStatus;
   roleId: UUID | null;
   permissions: string[];
 }
@@ -27,7 +27,7 @@ export interface SaasAdminPrincipal {
   id: UUID;
   loginId: string;
   fullName: string;
-  status: SaasAdminStatus;
+  status?: SaasAdminStatus;
 }
 
 export type AuthPrincipal = StoreUserPrincipal | SaasAdminPrincipal | null;
@@ -36,14 +36,75 @@ export interface StoreContext {
   id: UUID;
   storeCode: string;
   businessName: string;
-  status: StoreStatus;
+  status?: StoreStatus;
+  currencyCode?: string;
+  timezone?: string;
+  logoUrl?: string | null;
 }
 
-/** Result contract the Phase 2 login endpoint will return. Defined now so
- * frontend auth plumbing can be built against a stable contract. */
-export interface LoginResult {
-  principal: StoreUserPrincipal | SaasAdminPrincipal;
-  /** Opaque bearer token. Only the hash of this is ever stored server-side. */
-  token: string;
+// ---------------------------------------------------------------------------
+// Request/response contracts for the Phase 2 Edge Functions
+// (supabase/functions/store-login, saas-login, session-me, ...)
+// ---------------------------------------------------------------------------
+
+export interface StoreLoginRequest {
+  storeId: string;
+  loginId: string;
+  password: string;
+}
+
+export interface StoreLoginResponse {
+  user: {
+    id: UUID;
+    loginId: string;
+    fullName: string;
+    roleId: UUID | null;
+    permissions: string[];
+  };
+  store: {
+    id: UUID;
+    storeCode: string;
+    businessName: string;
+    currencyCode: string;
+    timezone: string;
+    logoUrl: string | null;
+  };
   expiresAt: string;
+}
+
+export interface SaasLoginRequest {
+  loginId: string;
+  password: string;
+}
+
+export interface SaasLoginResponse {
+  admin: {
+    id: UUID;
+    loginId: string;
+    fullName: string;
+  };
+  expiresAt: string;
+}
+
+export type SessionMeResponse =
+  | {
+      kind: 'store_user';
+      user: { id: UUID; loginId: string; fullName: string; roleId: UUID | null; permissions: string[] };
+      store: { id: UUID; storeCode: string; businessName: string };
+    }
+  | {
+      kind: 'saas_admin';
+      admin: { id: UUID; loginId: string; fullName: string };
+    };
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+/** Generic error shape returned by every auth endpoint. */
+export interface AuthApiError {
+  code: string;
+  message: string;
 }

@@ -1,0 +1,32 @@
+# Supabase CLI project configuration.
+#
+# verify_jwt = false on every function below because this project does not
+# use Supabase Auth — there is no Supabase Auth JWT to verify. Each
+# function performs its OWN authentication by reading and validating the
+# custom session cookie (see supabase/functions/_shared/authMiddleware.ts).
+# This is intentional, not an oversight — do not "fix" it by turning JWT
+# verification back on, which would reject every request since callers
+# never send a Supabase Auth JWT.
+
+project_id = "yvxsyvgccxdvmgazvofm"
+
+[functions.store-login]
+verify_jwt = false
+
+[functions.saas-login]
+verify_jwt = false
+
+[functions.session-me]
+verify_jwt = false
+
+[functions.logout]
+verify_jwt = false
+
+[functions.logout-all]
+verify_jwt = false
+
+[functions.change-password]
+verify_jwt = false
+
+[functions.admin-reset-store-user-password]
+verify_jwt = false

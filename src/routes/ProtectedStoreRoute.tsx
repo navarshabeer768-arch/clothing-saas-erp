@@ -1,17 +1,26 @@
 import type { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../features/auth';
+import { PageLoading } from '../components/ui';
 
 /**
- * Placeholder guard for store-app routes that require an authenticated
- * store_user session. Phase 1 has no real auth yet, so this currently just
- * renders its children — Phase 2 will replace the body with a real check
- * against the session established via the trusted server API (never trust
- * a store_id read from the URL/localStorage; always re-derive it from the
- * verified session token). Keeping this component in place now means every
- * future protected route already routes through a single, easy-to-harden
- * choke point.
+ * Guards /app/* routes. Requires an authenticated store_user session
+ * (resolved by AuthProvider via the server session-me endpoint — never
+ * inferred from localStorage or React state alone). A SaaS admin who is
+ * authenticated but not a store_user is also redirected to /login, since
+ * SaaS admin sessions must not grant access to store routes.
  */
 export function ProtectedStoreRoute({ children }: { children: ReactNode }) {
-  // TODO(Phase 2): redirect to /login if there is no valid store_user
-  // session, and expose the resolved StoreUserPrincipal via context.
+  const { principal, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <PageLoading label="Checking your session…" />;
+  }
+
+  if (!principal || principal.kind !== 'store_user') {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
   return <>{children}</>;
 }

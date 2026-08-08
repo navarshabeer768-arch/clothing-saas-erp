@@ -32,20 +32,31 @@ npm run build
 ```
 src/
   components/     Design system (Button, Input, Dialog, Toast, ...) + ErrorBoundary
-  layouts/        StoreAppLayout, SaasAdminLayout, PublicLayout
-  pages/          store/, saas/, public/, errors/
-  routes/         Route-guard placeholders (real auth checks land in Phase 2)
-  lib/            supabaseClient (anon-key only), apiClient, errors, cn
-  types/          Hand-written types mirroring the SQL schema
+  layouts/        StoreAppLayout, SaasAdminLayout, PublicLayout (with real logout)
+  pages/          store/, saas/, public/ (real login pages), errors/
+  routes/         Real ProtectedStoreRoute / ProtectedSaasRoute session guards
+  features/auth/  AuthContext, authService, PermissionGuard — the auth state layer
+  lib/            supabaseClient (anon-key only), apiClient (cookie-based), errors, cn
+  types/          Hand-written types mirroring the SQL schema + auth contracts
 supabase/
   migrations/     Numbered, idempotent SQL migrations (source of truth for schema)
+  functions/      Supabase Edge Functions — the trusted server layer (Phase 2)
   seed/           Local-development-only seed data (never auto-applied)
+scripts/
+  hash-password.mjs  Local dev CLI to generate bcrypt hashes for seed data
 server/
-  lib/            Server-only interfaces (password hashing, session tokens) — Phase 2 implements these
-  functions/      Documented contract for the Phase 2 login/session endpoints
+  (superseded — see server/README.md; real server code lives in supabase/functions/)
 docs/
   ARCHITECTURE.md Full write-up: SaaS hierarchy, auth strategy, tenant isolation, security model
 ```
+
+## Authentication (Phase 2)
+
+Custom Store ID + Login ID + Password auth (no Supabase Auth), backed by
+Supabase Edge Functions. See `docs/ARCHITECTURE.md` §12 and
+`supabase/functions/DEPLOY.md` for how to deploy the auth endpoints —
+**deployment requires your own `supabase login`**, which couldn't be done
+from the environment that built this.
 
 ## Why no Supabase Auth?
 

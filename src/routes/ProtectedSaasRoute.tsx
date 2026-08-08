@@ -1,12 +1,24 @@
 import type { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../features/auth';
+import { PageLoading } from '../components/ui';
 
 /**
- * Placeholder guard for SaaS Admin routes. Same rationale as
- * ProtectedStoreRoute — Phase 2 replaces this with a real saas_admin
- * session check.
+ * Guards /saas/* routes. Requires an authenticated saas_admin session. A
+ * store_user who is authenticated but not a saas_admin is redirected to
+ * /saas/login, not /login — store-user sessions never grant SaaS access.
  */
 export function ProtectedSaasRoute({ children }: { children: ReactNode }) {
-  // TODO(Phase 2): redirect to /saas/login if there is no valid saas_admin
-  // session.
+  const { principal, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <PageLoading label="Checking your session…" />;
+  }
+
+  if (!principal || principal.kind !== 'saas_admin') {
+    return <Navigate to="/saas/login" replace state={{ from: location.pathname }} />;
+  }
+
   return <>{children}</>;
 }

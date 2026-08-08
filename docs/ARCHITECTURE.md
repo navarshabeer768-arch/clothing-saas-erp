@@ -165,6 +165,9 @@ All schema lives in versioned, numbered SQL files under
 | `0008_sessions.sql` | `store_user_sessions`, `saas_admin_sessions`, `v_all_sessions` |
 | `0009_settings.sql` | `store_settings`, `saas_settings` |
 | `0010_audit_logs.sql` | Append-only audit trail |
+| `0011_login_rate_limits.sql` | DB-backed login rate limiting (Phase 2) |
+| `0012_saas_admin_lockout_fields.sql` | Adds lockout fields to `saas_admins` (Phase 2) |
+| `0013_auth_helper_functions.sql` | Atomic rate-limit/lockout SQL functions (Phase 2) |
 
 Development-only seed data lives separately in `supabase/seed/` (excluded
 from automatic migration runs — see that file's header for how to apply it
@@ -199,13 +202,57 @@ npm run dev
 `npm run build` runs `tsc -b && vite build` to typecheck and produce a
 production bundle.
 
-## 11. What Phase 2 builds on top of this
+## 12. Phase 2 — Authentication & session implementation
 
-- Real implementations of `server/lib/passwordHashing.ts` and
-  `server/lib/sessionTokens.ts`.
-- The actual `/api/store/login`, `/api/saas/login`, `/api/session/me`
-  endpoints described in `server/functions/README.md`.
-- Wiring `ProtectedStoreRoute` / `ProtectedSaasRoute` to a real session
-  check instead of the current pass-through placeholder.
-- An auth context/hook (`src/hooks/useAuth.ts`, not yet created) exposing
-  the resolved `StoreUserPrincipal`/`SaasAdminPrincipal` to the app.
+Phase 2 implements the concrete auth system the earlier sections describe.
+Summary of decisions (full detail in code comments at each referenced file):
+
+- **Server runtime:** Supabase Edge Functions (`supabase/functions/`), not
+  a separate Node server — keeps the service-role key inside Supabase's own
+  secret store (`supabase secrets set`) and avoids standing up/hosting a
+  second server for a static-only GitHub Pages frontend. See
+  `supabase/functions/DEPLOY.md` for deployment steps (requires your own
+  `supabase login`, which this environment cannot do on your behalf).
+- **Password hashing:** bcrypt (cost factor 12) via `bcryptjs`, not
+  Argon2id — Argon2's native bindings aren't reliable inside Deno's
+  sandboxed Edge Function runtime. bcrypt is the explicitly-allowed
+  fallback and has a mature pure-JS implementation. See
+  `supabase/functions/_shared/password.ts`.
+- **Session tokens:** opaque, `crypto.getRandomValues`-generated, SHA-256
+  hashed before storage (`store_user_sessions.token_hash` /
+  `saas_admin_sessions.token_hash`). Raw token never touches the database.
+  See `supabase/functions/_shared/sessionTokens.ts`.
+- **Session transport:** HttpOnly, Secure, `SameSite=None` cookies, set by
+  the Edge Function response, read via `credentials: 'include'` fetches
+  from the frontend. See `supabase/functions/_shared/cookies.ts` for the
+  full rationale, including the known Safari third-party-cookie limitation
+  that comes from the frontend (GitHub Pages) and backend (Supabase Edge
+  Functions) being different origins, and the recommended durable fix
+  (same-registrable-domain hosting once a custom domain is introduced).
+- **Rate limiting:** DB-backed fixed-window counters
+  (`login_rate_limits`, `increment_login_rate_limit()`) since Edge
+  Functions are stateless between invocations — an in-memory counter
+  wouldn't survive across requests. Scoped independently by IP and by
+  account (`store_id+login_id` or SaaS `login_id`) so one dimension can't
+  be used to dodge the other.
+- **Account lockout:** `failed_login_attempts`/`locked_until` on both
+  `store_users` and `saas_admins`, incremented atomically via
+  `register_store_user_failed_login()` / `register_saas_admin_failed_login()`
+  (single SQL statements, race-condition-safe under concurrent attempts).
+  Default: lock for 15 minutes after 5 consecutive failures.
+- **Auth middleware:** `requireStoreSession()` / `requireSaasAdminSession()`
+  in `supabase/functions/_shared/authMiddleware.ts` are the ONLY place
+  session tokens are resolved into a trusted `storeId`. Every current and
+  future privileged endpoint must call these rather than re-implementing
+  session lookup, and must use the `storeId` they return — never a
+  client-supplied one.
+- **Frontend auth state:** `src/features/auth/AuthContext.tsx` calls the
+  `session-me` endpoint on every app load (never assumes auth from
+  localStorage), exposes `principal`, `store`, `isAuthenticated`,
+  `isLoading`, `logout()`, and `hasPermission()`.
+- **Permission checks are two separate layers:** `PermissionGuard`
+  (`src/features/auth/PermissionGuard.tsx`) hides UI for a nicer
+  experience; `requirePermission()` in the Edge Function middleware is the
+  actual enforcement. Every future endpoint must call the backend check —
+  the frontend guard alone is never sufficient.
+
