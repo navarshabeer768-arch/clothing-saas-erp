@@ -187,6 +187,11 @@ supabase db push   # applies supabase/migrations/*.sql in order
 
 # Option B — Supabase Dashboard → SQL Editor
 # Paste each file from supabase/migrations/, in numeric order, and run it.
+
+# Option C — Supabase Dashboard → SQL Editor, all at once
+# Paste supabase/0001_to_0019_combined.sql (all 19 migrations concatenated,
+# in order, byte-for-byte identical content — see that file's header) and
+# run it in a single execution instead of 19 separate pastes.
 ```
 
 Every migration uses `create table if not exists` / `create index if not
