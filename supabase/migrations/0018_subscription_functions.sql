@@ -355,11 +355,24 @@ comment on function public.has_store_feature is
    Used by future modules'' requireStoreFeature() backend guard.';
 
 -- -----------------------------------------------------------------------------
--- Extend create_store_with_admin (Phase 3) with trailing optional params so
--- existing callers keep working unchanged. If p_plan_id is omitted, the
--- TRIAL plan is looked up by code and assigned with its configured
--- trial_days — "Recommended default: Trial plan".
+-- Extend create_store_with_admin (Phase 3) with trailing optional params.
+--
+-- IMPORTANT: CREATE OR REPLACE FUNCTION only replaces a function whose name
+-- AND argument types match exactly. Appending new parameters changes the
+-- signature, so "create or replace" here would NOT replace the Phase 3
+-- version — it would silently create a SECOND overload with the same name,
+-- leaving two ambiguous functions called create_store_with_admin (breaking
+-- both `supabase.rpc('create_store_with_admin', ...)` calls and any
+-- unqualified `COMMENT ON FUNCTION ... IS ...` statement, which is exactly
+-- what happened the first time this migration was written). The old
+-- 20-parameter signature is dropped explicitly first so the 22-parameter
+-- version below is the only create_store_with_admin left.
 -- -----------------------------------------------------------------------------
+drop function if exists public.create_store_with_admin(
+  text, text, text, text, text, text, text, text, text, text,
+  text, text, text, text, text, uuid, text, text, text, text
+);
+
 create or replace function public.create_store_with_admin(
   p_business_name text,
   p_legal_name text,

@@ -352,11 +352,17 @@ access).
   still exists and is manageable by SaaS Admin, but store_user business
   access is blocked.
 - **Store creation extended, not rebuilt**: `create_store_with_admin()`
-  (Phase 3) was extended via `create or replace function` with two new
+  (Phase 3) is extended in `0018_subscription_functions.sql` with two new
   *trailing, default-valued* parameters (`p_plan_id`, `p_billing_cycle`).
-  Existing callers that don't pass them keep working unchanged; omitting
-  `p_plan_id` auto-assigns the `TRIAL` plan by code, matching "Recommended
-  default: Trial plan."
+  Note: `CREATE OR REPLACE FUNCTION` only replaces a function whose name
+  AND argument types match exactly — appending parameters changes the
+  signature, so a plain `create or replace` does NOT replace the Phase 3
+  version; it silently creates a second, ambiguous overload with the same
+  name (this was caught and fixed — see the `drop function if exists
+  ...(20-arg signature)` immediately before the redefinition in that
+  migration). Existing callers that don't pass the new params keep working
+  unchanged; omitting `p_plan_id` auto-assigns the `TRIAL` plan by code,
+  matching "Recommended default: Trial plan."
 - **Feature/limit architecture**: `plan_features` (feature_key → enabled +
   optional limit_value) backs `has_store_feature()`; the plan's own
   `max_users`/`max_branches`/`max_products`/`max_storage_mb` columns back

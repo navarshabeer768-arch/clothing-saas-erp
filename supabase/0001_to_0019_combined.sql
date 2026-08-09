@@ -21,6 +21,13 @@
 --     It does NOT include supabase/seed/0001_dev_seed.sql (dev-only test
 --     accounts), which is intentionally kept separate — see that file's
 --     own header for why.
+--   - Fixed 2026-08-09: 0018_subscription_functions.sql now explicitly
+--     drops the old 20-parameter create_store_with_admin() signature
+--     before redefining it with 22 parameters — CREATE OR REPLACE does
+--     not replace a function when its argument list changes, so without
+--     the explicit DROP this produced two ambiguous overloads and a
+--     "function name is not unique" error on the following COMMENT ON
+--     FUNCTION statement.
 -- =============================================================================
 
 
@@ -1803,11 +1810,24 @@ comment on function public.has_store_feature is
    Used by future modules'' requireStoreFeature() backend guard.';
 
 -- -----------------------------------------------------------------------------
--- Extend create_store_with_admin (Phase 3) with trailing optional params so
--- existing callers keep working unchanged. If p_plan_id is omitted, the
--- TRIAL plan is looked up by code and assigned with its configured
--- trial_days — "Recommended default: Trial plan".
+-- Extend create_store_with_admin (Phase 3) with trailing optional params.
+--
+-- IMPORTANT: CREATE OR REPLACE FUNCTION only replaces a function whose name
+-- AND argument types match exactly. Appending new parameters changes the
+-- signature, so "create or replace" here would NOT replace the Phase 3
+-- version — it would silently create a SECOND overload with the same name,
+-- leaving two ambiguous functions called create_store_with_admin (breaking
+-- both `supabase.rpc('create_store_with_admin', ...)` calls and any
+-- unqualified `COMMENT ON FUNCTION ... IS ...` statement, which is exactly
+-- what happened the first time this migration was written). The old
+-- 20-parameter signature is dropped explicitly first so the 22-parameter
+-- version below is the only create_store_with_admin left.
 -- -----------------------------------------------------------------------------
+drop function if exists public.create_store_with_admin(
+  text, text, text, text, text, text, text, text, text, text,
+  text, text, text, text, text, uuid, text, text, text, text
+);
+
 create or replace function public.create_store_with_admin(
   p_business_name text,
   p_legal_name text,
